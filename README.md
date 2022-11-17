@@ -8,7 +8,7 @@ Repository for test federates that support testing of compliance with aspects of
  * QuerySupportedCapabilities
  * CapabilitiesSupported
 
-/**
+<!--
 title ETR
 
 participant "SendTask" as A
@@ -56,4 +56,4 @@ B->F:ResignFederationExecution
 
 
 A->F:ResignFederationExecution
-**/
+-->
