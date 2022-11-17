@@ -6,5 +6,4 @@ Repository for test federates that support testing of compliance with aspects of
 
 * Query and Responding to identify which ETR tasks are suported
 
-![Alt text](./QuerySupportedCapabilities.svg)
-<img src="./QuerySupportedCapabilities.svg">
+![QuerySupportedCapabilities](./QuerySupportedCapabilities.svg)
