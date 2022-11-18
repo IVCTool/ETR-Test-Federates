@@ -35,6 +35,13 @@ class CapabilitiesSupported extends NullFederateAmbassador implements Runnable
 
    public static void main(String[] args)
    {
+      System.out.println("This federate responds to QuerySupportedCapabilities with a CapabilitiesSupported reply.");
+      System.out.println("1.- Connect, Join, Publish, Subscribe.");
+      System.out.println("2.- Register NETN_Aggregate object.");
+      System.out.println("3.- Update required attributes including UUID.");
+      System.out.println("4.- Wait for QuerySupportedCapabilities with UUID as parameter.");
+      System.out.println("5.- Reply with CapabilitiesSupported.");
+
       if (args.length != 4) {
          System.out.println("Arguments required: rtiHost rtiPort FederationName UUID");
       } else {
@@ -60,6 +67,7 @@ class CapabilitiesSupported extends NullFederateAmbassador implements Runnable
    public void run()
    {
       try {
+
          System.out.println("\n----- Connect, Create, Join, Publish and Subscribe -----");
          RtiFactory rtiFactory = RtiFactoryFactory.getRtiFactory();
 
