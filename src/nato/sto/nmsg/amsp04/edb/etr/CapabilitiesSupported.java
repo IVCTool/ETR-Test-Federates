@@ -10,7 +10,7 @@ import java.util.Iterator;
 class CapabilitiesSupported extends NullFederateAmbassador implements Runnable
 {
    RTIambassador _rtiAmbassador;
-   String _federateType = "SendTask";
+   String _federateType = "CapabilitiesSupported";
    String _rtiHost;
    String _rtiPort;
    String _federationName;
@@ -64,8 +64,8 @@ class CapabilitiesSupported extends NullFederateAmbassador implements Runnable
          _rtiAmbassador.connect(this, CallbackModel.HLA_IMMEDIATE, _localSettingsDesignator);
          System.out.println(" -> OK");
 
-         URL _rprSwitches = new File("RPR-Switches_v2.0.xml").toURI().toURL();
-         URL _netnETR = new File("NETN-ETR.xml").toURI().toURL();
+         URL _rprSwitches = new File("./lib/fom/RPR-Switches_v2.0.xml").toURI().toURL();
+         URL _netnETR = new File("./lib/fom/NETN-ETR.xml").toURI().toURL();
          URL[] urls = new URL[]{_netnETR};
 
          try {

@@ -11,7 +11,7 @@ import java.util.Iterator;
 class QuerySupportedCapabilities extends NullFederateAmbassador implements Runnable
 {
    RTIambassador _rtiAmbassador;
-   String _federateType = "ReceiveTask";
+   String _federateType = "QuerySupportedCapabilities";
    String _rtiHost;
    String _rtiPort;
    String _federationName;
@@ -69,11 +69,11 @@ class QuerySupportedCapabilities extends NullFederateAmbassador implements Runna
          _rtiAmbassador.connect(this, CallbackModel.HLA_IMMEDIATE, _localSettingsDesignator);
          System.out.println(" -> OK");
 
-         URL _rprSwitches = new File("RPR-Switches_v2.0.xml").toURI().toURL();
-         URL _rprBase = new File("RPR-Base_v2.0.xml").toURI().toURL();
-         URL _netnETR = new File("NETN-ETR.xml").toURI().toURL();
-         URL _rprAgg = new File("RPR-Aggregate_v2.0.xml").toURI().toURL();
-         URL _netnMRM = new File("NETN-MRM.xml").toURI().toURL();
+         URL _rprSwitches = new File("./lib/fom/RPR-Switches_v2.0.xml").toURI().toURL();
+         URL _rprBase = new File("./lib/fom/RPR-Base_v2.0.xml").toURI().toURL();
+         URL _netnETR = new File("./lib/fom/NETN-ETR.xml").toURI().toURL();
+         URL _rprAgg = new File("./lib/fom/RPR-Aggregate_v2.0.xml").toURI().toURL();
+         URL _netnMRM = new File("./lib/fom/NETN-MRM.xml").toURI().toURL();
          URL[] urls = new URL[]{_rprBase, _netnETR, _netnMRM, _rprAgg};
 
          try {
