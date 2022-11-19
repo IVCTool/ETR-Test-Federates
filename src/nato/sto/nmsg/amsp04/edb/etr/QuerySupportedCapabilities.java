@@ -115,17 +115,20 @@ class QuerySupportedCapabilities extends NullFederateAmbassador implements Runna
          _rtiAmbassador.sendInteraction(_QuerySupportedCapabilities, parameters, null);
          System.out.println(" -> OK");
 
-         System.out.println("\n----- Wait " + _timeout +"ms for CapabilitiesSupported interaction -----");
+         System.out.println("\n----- Wait " + _timeout/1000 +"s for CapabilitiesSupported interaction -----");
          // Wait for Capabilities Supported or timeout
-         long endtime = System.currentTimeMillis() + _timeout;
-         while (System.currentTimeMillis() < endtime) {
-            Thread.sleep(1000);
-            System.out.print(".");
-         }
-         
-         _rtiAmbassador.resignFederationExecution(
-            ResignAction.DELETE_OBJECTS_THEN_DIVEST);
 
+         long currentTime = System.currentTimeMillis() ;
+         long endtime = currentTime + _timeout;
+
+         do {
+               Thread.sleep(500);
+               currentTime = System.currentTimeMillis() ;
+               System.out.print("\r" + (endtime-currentTime+1000)/1000+"s");
+         }  while (currentTime < endtime);
+
+                 _rtiAmbassador.resignFederationExecution(
+            ResignAction.DELETE_OBJECTS_THEN_DIVEST);
       } catch (Exception e) {
          e.printStackTrace();
       }

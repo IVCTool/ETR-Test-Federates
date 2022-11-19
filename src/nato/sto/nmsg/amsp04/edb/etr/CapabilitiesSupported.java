@@ -39,8 +39,12 @@ class CapabilitiesSupported extends NullFederateAmbassador implements Runnable
       System.out.println("1.- Connect, Join, Publish, Subscribe.");
       System.out.println("2.- Register NETN_Aggregate object.");
       System.out.println("3.- Update required attributes including UUID.");
-      System.out.println("4.- Wait for QuerySupportedCapabilities with UUID as parameter.");
-      System.out.println("5.- Reply with CapabilitiesSupported.");
+      System.out.println("4.- Wait for QuerySupportedCapabilities object corresponding UUID.");
+      System.out.println("5.- Reply with CapabilitiesSupported [MagicMove]");
+     // System.out.println("6.- Wait for ETR task");
+     // System.out.println("7.- Respond to task request");
+     // System.out.println("8.- If task is MagicMove then update spatial attribute and send task complete");
+     // System.out.println("9.- Repeat from 6");
 
       if (args.length != 4) {
          System.out.println("Arguments required: rtiHost rtiPort FederationName UUID");
@@ -57,7 +61,7 @@ class CapabilitiesSupported extends NullFederateAmbassador implements Runnable
       _uuid = args[3];
       _localSettingsDesignator = "crcHost=" + _rtiHost + "\n" + "crcPort=" + _rtiPort; // Pitch pRTI
 
-      System.out.println("----- Application Arguments -----");
+      System.out.println("\n----- Application Provided Arguments -----");
       System.out.println("rtiHost = " + _rtiHost);
       System.out.println("rtiPort = " + _rtiPort);
       System.out.println("FederationName = " + _federationName);
@@ -150,10 +154,18 @@ class CapabilitiesSupported extends NullFederateAmbassador implements Runnable
          System.out.println(" -> OK");
 
          System.out.println("\n----- Ready to respond to ETR requests -----");
-         // Loop until exit
+
+         int i = 0;
          while (true) {
-            Thread.sleep(1000);
-            System.out.print(".");
+            Thread.sleep(500);
+            switch (i % 4) {
+             case 0: System.out.print("|"); break;
+             case 1: System.out.print("/"); break;
+             case 2: System.out.print("—"); break;
+             case 3: System.out.print("\\"); break;
+            }
+            System.out.print("\r");
+            i++;
          }
 
       } catch (Exception e) {
