@@ -144,11 +144,38 @@ class CapabilitiesSupported extends NullFederateAmbassador implements Runnable
          System.out.println(" -> " + _theObject);
 
          System.out.println("\n----- Update NETN_Aggregate attributes -----");
-         EncoderFactory encoder = rtiFactory.getEncoderFactory();
-         AttributeHandleValueMap _ahvp = _rtiAmbassador.getAttributeHandleValueMapFactory().create(3);
-         _ahvp.put(_UniqueId, encoder.createHLAunicodeString(_uuid).toByteArray());
-         _ahvp.put(_Callsign, encoder.createHLAunicodeString(_uuid).toByteArray());
-         _ahvp.put(_Status, encoder.createHLAoctet((byte)1).toByteArray());
+
+         EncoderFactory _encoderFactory = rtiFactory.getEncoderFactory();
+         HLAoctet spatialDiscriminant = _encoderFactory.createHLAoctet((byte)1); // create discriminant
+         HLAvariantRecord<HLAoctet> spatial = _encoderFactory.createHLAvariantRecord(spatialDiscriminant);
+         HLAfixedRecord staticSpatial = _encoderFactory.createHLAfixedRecord();
+         HLAfixedRecord location = _encoderFactory.createHLAfixedRecord(); // X, Y, Z
+         location.add(_encoderFactory.createHLAfloat64BE(1));
+         location.add(_encoderFactory.createHLAfloat64BE(2));
+         location.add(_encoderFactory.createHLAfloat64BE(3));
+         HLAboolean isFrozen = _encoderFactory.createHLAboolean(false);
+         HLAfixedRecord orientation = _encoderFactory.createHLAfixedRecord(); // Psi, Theta, Phi
+         orientation.add(_encoderFactory.createHLAfloat32BE(4));
+         orientation.add(_encoderFactory.createHLAfloat32BE(5));
+         orientation.add(_encoderFactory.createHLAfloat32BE(6));
+         /*
+         HLAvariantRecord otherDRparameters = _encoderFactory.createHLAvariantRecord(_encoderFactory.createHLAbyte((byte)0)); // None
+         */
+         staticSpatial.add(location);
+         staticSpatial.add(isFrozen);
+         staticSpatial.add(orientation);
+         //staticSpatial.add(otherDRparameters);
+
+         spatial.setVariant(spatialDiscriminant, staticSpatial);
+
+         AttributeHandleValueMap _ahvp = _rtiAmbassador.getAttributeHandleValueMapFactory().create(4);
+         _ahvp.put(_UniqueId, _encoderFactory.createHLAunicodeString(_uuid).toByteArray());
+         _ahvp.put(_Callsign, _encoderFactory.createHLAunicodeString(_uuid).toByteArray());
+         _ahvp.put(_Status, _encoderFactory.createHLAoctet((byte)1).toByteArray());
+         _ahvp.put(_Spatial, spatial.toByteArray());
+
+
+
          System.out.print("updateAttributeValues("+_theObject+ ")");
          _rtiAmbassador.updateAttributeValues(_theObject, _ahvp, new byte[]{});
          System.out.println(" -> OK");
