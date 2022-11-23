@@ -45,7 +45,7 @@ class CapabilitiesSupported extends NullFederateAmbassador implements Runnable
      // System.out.println("7.- Respond to task request");
      // System.out.println("8.- If task is MagicMove then update spatial attribute and send task complete");
      // System.out.println("9.- Repeat from 6");
-
+     
       if (args.length != 4) {
          System.out.println("Arguments required: rtiHost rtiPort FederationName UUID");
       } else {
@@ -226,4 +226,56 @@ class CapabilitiesSupported extends NullFederateAmbassador implements Runnable
 
       }
    }
+
+   public void provideAttributeValueUpdate(
+      ObjectInstanceHandle theObject,
+      AttributeHandleSet theAttributes,
+      byte[] userSuppliedTag)
+   {
+      System.out.println("Received request for provideAttributeValueUpdate on " + theObject.toString());
+      updateOnRequest(theObject);
+   }
+
+   public void updateOnRequest(ObjectInstanceHandle theObject){
+      RtiFactory rtiFactory;
+      EncoderFactory _encoderFactory;
+      try {
+         rtiFactory = RtiFactoryFactory.getRtiFactory();
+         _encoderFactory = rtiFactory.getEncoderFactory();
+         
+         
+         HLAoctet spatialDiscriminant = _encoderFactory.createHLAoctet((byte)1); // create discriminant
+         HLAvariantRecord<HLAoctet> spatial = _encoderFactory.createHLAvariantRecord(spatialDiscriminant);
+         HLAfixedRecord staticSpatial = _encoderFactory.createHLAfixedRecord();
+         HLAfixedRecord location = _encoderFactory.createHLAfixedRecord(); // X, Y, Z
+         location.add(_encoderFactory.createHLAfloat64BE(1));
+         location.add(_encoderFactory.createHLAfloat64BE(2));
+         location.add(_encoderFactory.createHLAfloat64BE(3));
+         HLAboolean isFrozen = _encoderFactory.createHLAboolean(false);
+         HLAfixedRecord orientation = _encoderFactory.createHLAfixedRecord(); // Psi, Theta, Phi
+         orientation.add(_encoderFactory.createHLAfloat32BE(4));
+         orientation.add(_encoderFactory.createHLAfloat32BE(5));
+         orientation.add(_encoderFactory.createHLAfloat32BE(6));
+         /*
+         HLAvariantRecord otherDRparameters = _encoderFactory.createHLAvariantRecord(_encoderFactory.createHLAbyte((byte)0)); // None
+         */
+         staticSpatial.add(location);
+         staticSpatial.add(isFrozen);
+         staticSpatial.add(orientation);
+         //staticSpatial.add(otherDRparameters);
+
+         spatial.setVariant(spatialDiscriminant, staticSpatial);
+
+         AttributeHandleValueMap _ahvp = _rtiAmbassador.getAttributeHandleValueMapFactory().create(4);
+         _ahvp.put(_UniqueId, _encoderFactory.createHLAunicodeString(_uuid).toByteArray());
+         _ahvp.put(_Callsign, _encoderFactory.createHLAunicodeString(_uuid).toByteArray());
+         _ahvp.put(_Status, _encoderFactory.createHLAoctet((byte)1).toByteArray());
+         _ahvp.put(_Spatial, spatial.toByteArray());
+         _rtiAmbassador.updateAttributeValues(theObject, _ahvp, new byte[]{});
+      } catch (RTIinternalError | FederateNotExecutionMember | NotConnected | AttributeNotOwned | AttributeNotDefined | ObjectInstanceNotKnown | SaveInProgress | RestoreInProgress e) {
+         // TODO Auto-generated catch block
+         e.printStackTrace();
+      }
+   }
+
 }

@@ -1,7 +1,22 @@
 package nato.sto.nmsg.amsp04.edb.etr;
 
 import hla.rti1516e.*;
+import hla.rti1516e.encoding.DecoderException;
+import hla.rti1516e.encoding.HLAfixedRecord;
+import hla.rti1516e.encoding.HLAfloat64BE;
+import hla.rti1516e.encoding.HLAoctet;
+import hla.rti1516e.encoding.HLAunicodeString;
+import hla.rti1516e.encoding.HLAvariantRecord;
+import hla.rti1516e.exceptions.AttributeNotDefined;
+import hla.rti1516e.exceptions.FederateNotExecutionMember;
 import hla.rti1516e.exceptions.FederationExecutionAlreadyExists;
+import hla.rti1516e.exceptions.InvalidObjectClassHandle;
+import hla.rti1516e.exceptions.NameNotFound;
+import hla.rti1516e.exceptions.NotConnected;
+import hla.rti1516e.exceptions.ObjectClassNotDefined;
+import hla.rti1516e.exceptions.RTIinternalError;
+import hla.rti1516e.exceptions.RestoreInProgress;
+import hla.rti1516e.exceptions.SaveInProgress;
 
 import java.io.File;
 import java.net.URL;
@@ -27,6 +42,17 @@ class QuerySupportedCapabilities extends NullFederateAmbassador implements Runna
    InteractionClassHandle _QuerySupportedCapabilities;
    InteractionClassHandle _CapabilitiesSupported;
    ParameterHandle _CapabilityNames; // Required
+
+   ObjectClassHandle _NETN_Aggregate;
+   AttributeHandle _EntityType; //Required
+   AttributeHandle _EntityIdentifier; //Required
+   AttributeHandle _Spatial; //Required
+   AttributeHandle _UniqueId; //Required
+   AttributeHandle _Status; //Required
+   AttributeHandle _Callsign; //Required
+   AttributeHandleSet _attributes;
+
+   hla.rti1516e.encoding.EncoderFactory _encoderFactory;
 
    public static void main(String[] args)
    {
@@ -59,6 +85,7 @@ class QuerySupportedCapabilities extends NullFederateAmbassador implements Runna
          System.out.println("\n----- Connect, Create, Join, Publish and Subscribe -----");
          RtiFactory rtiFactory = RtiFactoryFactory.getRtiFactory();
          _rtiAmbassador = rtiFactory.getRtiAmbassador();
+         _encoderFactory = rtiFactory.getEncoderFactory();
 
          System.out.print("connect(" + _localSettingsDesignator + ")");
          _rtiAmbassador.connect(this, CallbackModel.HLA_IMMEDIATE, _localSettingsDesignator);
@@ -70,13 +97,13 @@ class QuerySupportedCapabilities extends NullFederateAmbassador implements Runna
 
          try {
             System.out.print("createFederationExecution(" + _federationName + ")");
-            _rtiAmbassador.createFederationExecution("ETR", _rprSwitches);
+            _rtiAmbassador.createFederationExecution(_federationName, _rprSwitches);
             System.out.println(" -> OK");
          } catch (FederationExecutionAlreadyExists ignored) {
             System.out.println(" -> FederationExecutionAlreadyExists");
          }
          System.out.print("joinFederationExecution(" + _federateType + ", " + _federationName + ")");
-         FederateHandle federateHandle = _rtiAmbassador.joinFederationExecution(_federateType, "ETR", urls);
+         FederateHandle federateHandle = _rtiAmbassador.joinFederationExecution(_federateType, _federationName, urls);
          System.out.println(" -> Joined as " + federateHandle);
 
          System.out.print("publishInteractionClass(ETR_Root.ETR_SimCon.QuerySupportedCapabilities)");
@@ -102,7 +129,22 @@ class QuerySupportedCapabilities extends NullFederateAmbassador implements Runna
          System.out.println(" -> OK");
 
          System.out.println("\n----- Wait until discovery of NETN_Aggregate with UniqueId = " + _uuid + " -----");
-
+         
+         _NETN_Aggregate = _rtiAmbassador.getObjectClassHandle("BaseEntity.AggregateEntity.NETN_Aggregate");
+         _EntityType =_rtiAmbassador.getAttributeHandle(_NETN_Aggregate, "EntityType");
+         _EntityIdentifier =_rtiAmbassador.getAttributeHandle(_NETN_Aggregate, "EntityIdentifier");
+         _Spatial =_rtiAmbassador.getAttributeHandle(_NETN_Aggregate, "Spatial");
+         _UniqueId =_rtiAmbassador.getAttributeHandle(_NETN_Aggregate, "UniqueId");
+         _Status =_rtiAmbassador.getAttributeHandle(_NETN_Aggregate, "Status");
+         _Callsign =_rtiAmbassador.getAttributeHandle(_NETN_Aggregate, "Callsign");
+         AttributeHandleSet _attributes = _rtiAmbassador.getAttributeHandleSetFactory().create();
+         _attributes.add(_EntityType);
+         _attributes.add(_EntityIdentifier);
+         _attributes.add(_Spatial);
+         _attributes.add(_UniqueId);
+         _attributes.add(_Status);
+         _attributes.add(_Callsign);
+         _rtiAmbassador.subscribeObjectClassAttributes(_NETN_Aggregate, _attributes);
 
          System.out.println("\n----- Query Supported Capabilities -----");
 
@@ -113,7 +155,7 @@ class QuerySupportedCapabilities extends NullFederateAmbassador implements Runna
          parameters.put(_Taskee, _uuid.getBytes());
 
          _rtiAmbassador.sendInteraction(_QuerySupportedCapabilities, parameters, null);
-         System.out.println(" -> OK");
+         System.out.println("\nSendInteraction  -> OK");
 
          System.out.println("\n----- Wait " + _timeout/1000 +"s for CapabilitiesSupported interaction -----");
          // Wait for Capabilities Supported or timeout
@@ -161,4 +203,94 @@ class QuerySupportedCapabilities extends NullFederateAmbassador implements Runna
          }
       }
    }
+
+   public void discoverObjectInstance(
+      ObjectInstanceHandle theObject,
+      ObjectClassHandle theObjectClass,
+      java.lang.String objectName)
+   {
+      
+      try {
+         _NETN_Aggregate = _rtiAmbassador.getObjectClassHandle("BaseEntity.AggregateEntity.NETN_Aggregate");
+         System.out.print("\nVerifying "+theObject.toString()+" is of class NETN_Aggregate");
+         if( theObjectClass.equals(_NETN_Aggregate)){
+            System.out.println(" -> OK");
+            AttributeHandleSet _attributes = _rtiAmbassador.getAttributeHandleSetFactory().create();
+            _attributes.add(_EntityType);
+            _attributes.add(_EntityIdentifier);
+            _attributes.add(_Spatial);
+            _attributes.add(_UniqueId);
+            _attributes.add(_Status);
+            _attributes.add(_Callsign);
+            
+            System.out.println("Requesting Attribute value update");
+            _rtiAmbassador.requestAttributeValueUpdate(theObjectClass, _attributes, null);
+            System.out.println("Request Attribute value update -> OK");
+         }
+         
+      } catch (AttributeNotDefined | ObjectClassNotDefined | SaveInProgress | RestoreInProgress
+            | FederateNotExecutionMember | NotConnected | RTIinternalError e) {
+         // TODO Auto-generated catch block
+         e.printStackTrace();
+      } catch (NameNotFound e) {
+         // TODO Auto-generated catch block
+         e.printStackTrace();
+      }
+   }
+
+   public void reflectAttributeValues(
+      ObjectInstanceHandle theObject,
+      AttributeHandleValueMap theAttributes,
+      byte[] userSuppliedTag,
+      OrderType sentOrdering,
+      TransportationTypeHandle theTransport,
+      FederateAmbassador.SupplementalReflectInfo reflectInfo)
+      {
+         //Decoders
+         HLAunicodeString unicodeDecoder = _encoderFactory.createHLAunicodeString();
+         HLAoctet octetDecoder = _encoderFactory.createHLAoctet();
+         
+         HLAoctet discriminant = _encoderFactory.createHLAoctet();
+         
+         HLAfixedRecord location = _encoderFactory.createHLAfixedRecord(); //X, Y, Z
+         HLAfixedRecord orientation = _encoderFactory.createHLAfixedRecord(); //Psi, Theta, Phi
+         hla.rti1516e.encoding.HLAboolean isFrozen = _encoderFactory.createHLAboolean();
+
+         HLAfixedRecord staticSpatial = _encoderFactory.createHLAfixedRecord(); //Container location, isFrozen and orientation
+         HLAvariantRecord decoder = _encoderFactory.createHLAvariantRecord(discriminant);
+         
+         try {
+            unicodeDecoder.decode(theAttributes.get(_UniqueId));
+            System.out.println("Received reflection from: " + unicodeDecoder.getValue());
+            
+            unicodeDecoder.decode(theAttributes.get(_Callsign));
+            System.out.println("Callsign: " + unicodeDecoder.getValue());
+
+            octetDecoder.decode(theAttributes.get(_Status));
+            System.out.println("Status: " + octetDecoder.getValue());
+
+            location.add(_encoderFactory.createHLAfloat64BE());
+            location.add(_encoderFactory.createHLAfloat64BE());
+            location.add(_encoderFactory.createHLAfloat64BE());
+
+            orientation.add(_encoderFactory.createHLAfloat32BE());
+            orientation.add(_encoderFactory.createHLAfloat32BE());
+            orientation.add(_encoderFactory.createHLAfloat32BE());
+
+            staticSpatial.add(location);
+            staticSpatial.add(isFrozen);
+            staticSpatial.add(orientation);
+            decoder.setVariant(_encoderFactory.createHLAoctet((byte)1), staticSpatial);
+
+            decoder.decode(theAttributes.get(_Spatial));
+            
+            System.out.println("Static spatial: " + staticSpatial.toString());
+
+         } catch (DecoderException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+         }
+         
+      }
+
 }
