@@ -223,8 +223,26 @@ class CapabilitiesSupported extends NullFederateAmbassador implements Runnable
          System.out.println();
          System.out.println("receiveInteraction: CapabilitiesSupported(TaskId:" + taskId + ", Taskee:" + taskee + ")");
    
+         sendCapabilitiesInteraction(taskId, taskee);
 
       }
+   }
+
+   public void sendCapabilitiesInteraction(String taskId, String taskee){
+      System.out.println();
+      System.out.print("Sending CapabilitiesSupported interaction");
+      try {
+         ParameterHandleValueMap parameters = _rtiAmbassador.getParameterHandleValueMapFactory().create(3);
+         parameters.put(_TaskId, taskId.getBytes());
+         parameters.put(_Taskee, taskee.getBytes());
+         //parameters.put(_CapabilityNames, null); //TODO: Add array of supported capabilities
+         _rtiAmbassador.sendInteraction(_CapabilitiesSupported, parameters, null);
+
+      } catch (FederateNotExecutionMember | NotConnected | InteractionClassNotPublished | InteractionParameterNotDefined | InteractionClassNotDefined | SaveInProgress | RestoreInProgress | RTIinternalError e) {
+         // TODO Auto-generated catch block
+         e.printStackTrace();
+      }
+      System.out.println(" -> OK");
    }
 
    public void provideAttributeValueUpdate(

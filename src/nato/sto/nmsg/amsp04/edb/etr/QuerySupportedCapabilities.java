@@ -1,11 +1,15 @@
 package nato.sto.nmsg.amsp04.edb.etr;
 
 import hla.rti1516e.*;
+import hla.rti1516e.encoding.DataElementFactory;
 import hla.rti1516e.encoding.DecoderException;
+import hla.rti1516e.encoding.HLAbyte;
+import hla.rti1516e.encoding.HLAfixedArray;
 import hla.rti1516e.encoding.HLAfixedRecord;
 import hla.rti1516e.encoding.HLAfloat64BE;
 import hla.rti1516e.encoding.HLAoctet;
 import hla.rti1516e.encoding.HLAunicodeString;
+import hla.rti1516e.encoding.HLAvariableArray;
 import hla.rti1516e.encoding.HLAvariantRecord;
 import hla.rti1516e.exceptions.AttributeNotDefined;
 import hla.rti1516e.exceptions.FederateNotExecutionMember;
@@ -20,7 +24,11 @@ import hla.rti1516e.exceptions.SaveInProgress;
 
 import java.io.File;
 import java.net.URL;
+import java.util.Base64;
 import java.util.Iterator;
+
+import java.nio.ByteBuffer;
+import java.util.*;
 
 class QuerySupportedCapabilities extends NullFederateAmbassador implements Runnable
 {
@@ -53,6 +61,13 @@ class QuerySupportedCapabilities extends NullFederateAmbassador implements Runna
    AttributeHandleSet _attributes;
 
    hla.rti1516e.encoding.EncoderFactory _encoderFactory;
+
+   //Factories
+   DataElementFactory<HLAbyte> _byteEncoderFactory = new DataElementFactory<HLAbyte>() {
+      public HLAbyte createElement(int index){
+         return _encoderFactory.createHLAbyte();
+      }
+   };
 
    public static void main(String[] args)
    {
@@ -146,6 +161,9 @@ class QuerySupportedCapabilities extends NullFederateAmbassador implements Runna
          _attributes.add(_Callsign);
          _rtiAmbassador.subscribeObjectClassAttributes(_NETN_Aggregate, _attributes);
 
+
+         Thread.sleep(2000);
+
          System.out.println("\n----- Query Supported Capabilities -----");
 
          System.out.print("sendInteraction(ETR_Root.ETR_SimCon.QuerySupportedCapabilities, {TaskId=" + _requestTaskId + ", Taskee=" + _uuid + "})");
@@ -225,7 +243,7 @@ class QuerySupportedCapabilities extends NullFederateAmbassador implements Runna
             
             System.out.println("Requesting Attribute value update");
             _rtiAmbassador.requestAttributeValueUpdate(theObjectClass, _attributes, null);
-            System.out.println("Request Attribute value update -> OK");
+            //System.out.println("Request Attribute value update -> OK");
          }
          
       } catch (AttributeNotDefined | ObjectClassNotDefined | SaveInProgress | RestoreInProgress
@@ -246,22 +264,24 @@ class QuerySupportedCapabilities extends NullFederateAmbassador implements Runna
       TransportationTypeHandle theTransport,
       FederateAmbassador.SupplementalReflectInfo reflectInfo)
       {
+         
+
+
          //Decoders
          HLAunicodeString unicodeDecoder = _encoderFactory.createHLAunicodeString();
+         HLAbyte _byteDecoder = _encoderFactory.createHLAbyte();
+         HLAfixedArray<HLAbyte> arrayDecoder = _encoderFactory.createHLAfixedArray(_byteEncoderFactory, 16);
          HLAoctet octetDecoder = _encoderFactory.createHLAoctet();
          
-         HLAoctet discriminant = _encoderFactory.createHLAoctet();
          
-         HLAfixedRecord location = _encoderFactory.createHLAfixedRecord(); //X, Y, Z
-         HLAfixedRecord orientation = _encoderFactory.createHLAfixedRecord(); //Psi, Theta, Phi
-         hla.rti1516e.encoding.HLAboolean isFrozen = _encoderFactory.createHLAboolean();
 
-         HLAfixedRecord staticSpatial = _encoderFactory.createHLAfixedRecord(); //Container location, isFrozen and orientation
-         HLAvariantRecord decoder = _encoderFactory.createHLAvariantRecord(discriminant);
-         
          try {
-            unicodeDecoder.decode(theAttributes.get(_UniqueId));
-            System.out.println("Received reflection from: " + unicodeDecoder.getValue());
+            arrayDecoder.decode(theAttributes.get(_UniqueId));
+            System.out.print("Received reflection from: ");
+            UUID uuid = convertBytesToUUID(arrayDecoder.toByteArray());
+            System.out.println(uuid);
+            //unicodeDecoder.decode(theAttributes.get(_UniqueId));
+            //System.out.println("Received reflection from: " + unicodeDecoder.getValue());
             
             unicodeDecoder.decode(theAttributes.get(_Callsign));
             System.out.println("Callsign: " + unicodeDecoder.getValue());
@@ -269,22 +289,18 @@ class QuerySupportedCapabilities extends NullFederateAmbassador implements Runna
             octetDecoder.decode(theAttributes.get(_Status));
             System.out.println("Status: " + octetDecoder.getValue());
 
-            location.add(_encoderFactory.createHLAfloat64BE());
-            location.add(_encoderFactory.createHLAfloat64BE());
-            location.add(_encoderFactory.createHLAfloat64BE());
-
-            orientation.add(_encoderFactory.createHLAfloat32BE());
-            orientation.add(_encoderFactory.createHLAfloat32BE());
-            orientation.add(_encoderFactory.createHLAfloat32BE());
-
-            staticSpatial.add(location);
-            staticSpatial.add(isFrozen);
-            staticSpatial.add(orientation);
-            decoder.setVariant(_encoderFactory.createHLAoctet((byte)1), staticSpatial);
-
+            
+            
+            HLAvariantRecord decoder = buildSpatialDecoder();
+            
             decoder.decode(theAttributes.get(_Spatial));
             
-            System.out.println("Static spatial: " + staticSpatial.toString());
+            
+            System.out.println("Spatial discriminant: " + decoder.getDiscriminant());
+            decoder.setDiscriminant(decoder.getDiscriminant());
+            HLAfixedRecord values = (HLAfixedRecord)decoder.getValue();
+            System.out.println("Spatial location: " + values.get(0));
+            System.out.println("Discover object -> OK\n");
 
          } catch (DecoderException e) {
             // TODO Auto-generated catch block
@@ -292,5 +308,72 @@ class QuerySupportedCapabilities extends NullFederateAmbassador implements Runna
          }
          
       }
+
+      public HLAvariantRecord buildSpatialDecoder(){
+         HLAoctet discriminant = _encoderFactory.createHLAoctet();
+         
+         HLAfixedRecord location = _encoderFactory.createHLAfixedRecord(); //X, Y, Z
+         HLAfixedRecord orientation = _encoderFactory.createHLAfixedRecord(); //Psi, Theta, Phi
+         HLAfixedRecord velocity = _encoderFactory.createHLAfixedRecord(); //XYZ velocity
+         HLAfixedRecord angularVelocity = _encoderFactory.createHLAfixedRecord();
+         hla.rti1516e.encoding.HLAboolean isFrozen = _encoderFactory.createHLAboolean();
+
+         HLAfixedRecord staticSpatial = _encoderFactory.createHLAfixedRecord(); //Container location, isFrozen and orientation
+         HLAfixedRecord FPWSpatial = _encoderFactory.createHLAfixedRecord();
+         HLAfixedRecord RPWSpatial = _encoderFactory.createHLAfixedRecord();
+         HLAfixedRecord RVWSpatial = _encoderFactory.createHLAfixedRecord();
+         HLAfixedRecord FVWSpatial = _encoderFactory.createHLAfixedRecord();
+         HLAfixedRecord FPBSpatial = _encoderFactory.createHLAfixedRecord();
+         HLAfixedRecord RPBSpatial = _encoderFactory.createHLAfixedRecord();
+         HLAfixedRecord RVBSpatial = _encoderFactory.createHLAfixedRecord();
+         HLAfixedRecord FVBSpatial = _encoderFactory.createHLAfixedRecord();
+
+         HLAvariantRecord decoder = _encoderFactory.createHLAvariantRecord(discriminant);
+         location.add(_encoderFactory.createHLAfloat64BE());
+         location.add(_encoderFactory.createHLAfloat64BE());
+         location.add(_encoderFactory.createHLAfloat64BE());
+
+         orientation.add(_encoderFactory.createHLAfloat32BE());
+         orientation.add(_encoderFactory.createHLAfloat32BE());
+         orientation.add(_encoderFactory.createHLAfloat32BE());
+
+         velocity.add(_encoderFactory.createHLAfloat32BE());
+         velocity.add(_encoderFactory.createHLAfloat32BE());
+         velocity.add(_encoderFactory.createHLAfloat32BE());
+
+         angularVelocity.add(_encoderFactory.createHLAfloat32BE());
+         angularVelocity.add(_encoderFactory.createHLAfloat32BE());
+         angularVelocity.add(_encoderFactory.createHLAfloat32BE());
+
+         staticSpatial.add(location);
+         staticSpatial.add(isFrozen);
+         staticSpatial.add(orientation);
+
+         FPWSpatial.add(location);
+         FPWSpatial.add(isFrozen);
+         FPWSpatial.add(orientation);
+         FPWSpatial.add(velocity);
+
+         RPWSpatial.add(location);
+         RPWSpatial.add(isFrozen);
+         RPWSpatial.add(orientation);
+         RPWSpatial.add(velocity);
+         RPWSpatial.add(angularVelocity);
+
+
+         decoder.setVariant(_encoderFactory.createHLAoctet((byte)1), staticSpatial);
+         decoder.setVariant(_encoderFactory.createHLAoctet((byte)2), FPWSpatial);
+         decoder.setVariant(_encoderFactory.createHLAoctet((byte)3), RPWSpatial);
+
+         return decoder;
+      }
+
+      //Util func to convert byte -> UUID
+      public static UUID convertBytesToUUID(byte[] bytes) {
+         ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
+         long high = byteBuffer.getLong();
+         long low = byteBuffer.getLong();
+         return new UUID(high, low);
+     }
 
 }
