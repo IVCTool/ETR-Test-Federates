@@ -6,7 +6,9 @@ import hla.rti1516e.encoding.*;
 
 import java.io.File;
 import java.net.URL;
+import java.nio.ByteBuffer;
 import java.util.Iterator;
+import java.util.UUID;
 
 class CapabilitiesSupported extends NullFederateAmbassador implements Runnable
 {
@@ -32,6 +34,19 @@ class CapabilitiesSupported extends NullFederateAmbassador implements Runnable
    InteractionClassHandle _QuerySupportedCapabilities;
    InteractionClassHandle _CapabilitiesSupported;
    ParameterHandle _CapabilityNames; // Required
+
+   EncoderFactory _encoderFactory;
+   //Factories
+   DataElementFactory<HLAbyte> _byteEncoderFactory = new DataElementFactory<HLAbyte>() {
+      public HLAbyte createElement(int index){
+         return _encoderFactory.createHLAbyte();
+      }
+   };
+   DataElementFactory<HLAASCIIstring> _stringEncoderFactory = new DataElementFactory<HLAASCIIstring>() {
+      public HLAASCIIstring createElement(int index){
+         return _encoderFactory.createHLAASCIIstring();
+      }
+   };
 
    public static void main(String[] args)
    {
@@ -76,6 +91,7 @@ class CapabilitiesSupported extends NullFederateAmbassador implements Runnable
          RtiFactory rtiFactory = RtiFactoryFactory.getRtiFactory();
 
          _rtiAmbassador = rtiFactory.getRtiAmbassador();
+         _encoderFactory = rtiFactory.getEncoderFactory();
 
          System.out.print("connect(" + _localSettingsDesignator + ")");
          _rtiAmbassador.connect(this, CallbackModel.HLA_IMMEDIATE, _localSettingsDesignator);
@@ -145,7 +161,7 @@ class CapabilitiesSupported extends NullFederateAmbassador implements Runnable
 
          System.out.println("\n----- Update NETN_Aggregate attributes -----");
 
-         EncoderFactory _encoderFactory = rtiFactory.getEncoderFactory();
+         
          HLAoctet spatialDiscriminant = _encoderFactory.createHLAoctet((byte)1); // create discriminant
          HLAvariantRecord<HLAoctet> spatial = _encoderFactory.createHLAvariantRecord(spatialDiscriminant);
          HLAfixedRecord staticSpatial = _encoderFactory.createHLAfixedRecord();
@@ -188,7 +204,7 @@ class CapabilitiesSupported extends NullFederateAmbassador implements Runnable
             switch (i % 4) {
              case 0: System.out.print("|"); break;
              case 1: System.out.print("/"); break;
-             case 2: System.out.print("—"); break;
+             case 2: System.out.print("-"); break;
              case 3: System.out.print("\\"); break;
             }
             System.out.print("\r");
@@ -233,9 +249,12 @@ class CapabilitiesSupported extends NullFederateAmbassador implements Runnable
       System.out.print("Sending CapabilitiesSupported interaction");
       try {
          ParameterHandleValueMap parameters = _rtiAmbassador.getParameterHandleValueMapFactory().create(3);
+         HLAvariableArray<HLAASCIIstring> capabilityNames = _encoderFactory.createHLAvariableArray(_stringEncoderFactory);
+         capabilityNames.addElement(_encoderFactory.createHLAASCIIstring("ETR_Root.ETR_SimCon.QuerySupportedCapabilities"));
+         
          parameters.put(_TaskId, taskId.getBytes());
          parameters.put(_Taskee, taskee.getBytes());
-         //parameters.put(_CapabilityNames, null); //TODO: Add array of supported capabilities
+         parameters.put(_CapabilityNames, capabilityNames.toByteArray()); //TODO: Add array of supported capabilities
          _rtiAmbassador.sendInteraction(_CapabilitiesSupported, parameters, null);
 
       } catch (FederateNotExecutionMember | NotConnected | InteractionClassNotPublished | InteractionParameterNotDefined | InteractionClassNotDefined | SaveInProgress | RestoreInProgress | RTIinternalError e) {
@@ -255,13 +274,8 @@ class CapabilitiesSupported extends NullFederateAmbassador implements Runnable
    }
 
    public void updateOnRequest(ObjectInstanceHandle theObject){
-      RtiFactory rtiFactory;
-      EncoderFactory _encoderFactory;
       try {
-         rtiFactory = RtiFactoryFactory.getRtiFactory();
-         _encoderFactory = rtiFactory.getEncoderFactory();
-         
-         
+
          HLAoctet spatialDiscriminant = _encoderFactory.createHLAoctet((byte)1); // create discriminant
          HLAvariantRecord<HLAoctet> spatial = _encoderFactory.createHLAvariantRecord(spatialDiscriminant);
          HLAfixedRecord staticSpatial = _encoderFactory.createHLAfixedRecord();
@@ -274,18 +288,26 @@ class CapabilitiesSupported extends NullFederateAmbassador implements Runnable
          orientation.add(_encoderFactory.createHLAfloat32BE(4));
          orientation.add(_encoderFactory.createHLAfloat32BE(5));
          orientation.add(_encoderFactory.createHLAfloat32BE(6));
-         /*
-         HLAvariantRecord otherDRparameters = _encoderFactory.createHLAvariantRecord(_encoderFactory.createHLAbyte((byte)0)); // None
-         */
+       
          staticSpatial.add(location);
          staticSpatial.add(isFrozen);
          staticSpatial.add(orientation);
-         //staticSpatial.add(otherDRparameters);
 
          spatial.setVariant(spatialDiscriminant, staticSpatial);
 
+         //Convert _uuid from string to byte array
+         //string -> UUID -> Byte[16]
+         UUID uuid = UUID.fromString(_uuid);
+         byte[] byteArray = convertUUIDToBytes(uuid);
+
+         HLAfixedArray<HLAbyte> arrayForUUID = _encoderFactory.createHLAfixedArray(_byteEncoderFactory, 16);
+
+         for(int i = 0; i < 16; i++){
+            arrayForUUID.get(i).setValue(byteArray[i]);
+         }
+
          AttributeHandleValueMap _ahvp = _rtiAmbassador.getAttributeHandleValueMapFactory().create(4);
-         _ahvp.put(_UniqueId, _encoderFactory.createHLAunicodeString(_uuid).toByteArray());
+         _ahvp.put(_UniqueId, arrayForUUID.toByteArray());
          _ahvp.put(_Callsign, _encoderFactory.createHLAunicodeString(_uuid).toByteArray());
          _ahvp.put(_Status, _encoderFactory.createHLAoctet((byte)1).toByteArray());
          _ahvp.put(_Spatial, spatial.toByteArray());
@@ -295,5 +317,12 @@ class CapabilitiesSupported extends NullFederateAmbassador implements Runnable
          e.printStackTrace();
       }
    }
+
+   public static byte[] convertUUIDToBytes(UUID uuid) {
+      ByteBuffer bb = ByteBuffer.wrap(new byte[16]);
+      bb.putLong(uuid.getMostSignificantBits());
+      bb.putLong(uuid.getLeastSignificantBits());
+      return bb.array();
+  }
 
 }
