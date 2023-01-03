@@ -1,30 +1,6 @@
 package nato.sto.nmsg.amsp04.edb.etr;
 
 import hla.rti1516e.*;
-/*
-import hla.rti1516e.encoding.DataElementFactory;
-import hla.rti1516e.encoding.DecoderException;
-import hla.rti1516e.encoding.HLAbyte;
-import hla.rti1516e.encoding.HLAfixedArray;
-import hla.rti1516e.encoding.HLAfixedRecord;
-import hla.rti1516e.encoding.HLAfloat64BE;
-import hla.rti1516e.encoding.HLAoctet;
-import hla.rti1516e.encoding.HLAunicodeString;
-import hla.rti1516e.encoding.HLAvariableArray;
-import hla.rti1516e.encoding.HLAvariantRecord;
-
-import hla.rti1516e.exceptions.AttributeNotDefined;
-import hla.rti1516e.exceptions.FederateNotExecutionMember;
-import hla.rti1516e.exceptions.FederationExecutionAlreadyExists;
-import hla.rti1516e.exceptions.InvalidObjectClassHandle;
-import hla.rti1516e.exceptions.NameNotFound;
-import hla.rti1516e.exceptions.NotConnected;
-import hla.rti1516e.exceptions.ObjectClassNotDefined;
-import hla.rti1516e.exceptions.RTIinternalError;
-import hla.rti1516e.exceptions.RestoreInProgress;
-import hla.rti1516e.exceptions.SaveInProgress;
- */
-
 import hla.rti1516e.exceptions.*;
 import hla.rti1516e.encoding.*;
 
@@ -62,6 +38,9 @@ class QuerySupportedCapabilities extends NullFederateAmbassador implements Runna
    InteractionClassHandle _QuerySupportedCapabilities;
    InteractionClassHandle _CapabilitiesSupported;
    ParameterHandle _CapabilityNames; // Required
+   InteractionClassHandle _MagicMove;
+   ParameterHandle _Location; // Required magic move
+   ParameterHandle _Heading; //Required magic move
 
    ObjectClassHandle _NETN_Aggregate;
    AttributeHandle _EntityType; //Required
@@ -161,6 +140,13 @@ class QuerySupportedCapabilities extends NullFederateAmbassador implements Runna
          _rtiAmbassador.subscribeInteractionClass(_CapabilitiesSupported);
          System.out.println(" -> OK");
          
+         System.out.print("publishInteractionClass(ETR_Root.ETR_SimCon.MagicMove)");
+         _MagicMove = _rtiAmbassador.getInteractionClassHandle(
+            "ETR_Root.ETR_SimCon.MagicMove");
+         _Location = _rtiAmbassador.getParameterHandle(_MagicMove, "Location");
+         _Heading = _rtiAmbassador.getParameterHandle(_MagicMove, "Heading");
+         _rtiAmbassador.publishInteractionClass(_MagicMove);
+         System.out.println(" -> OK");
 
          System.out.println("\n----- Wait until discovery of NETN_Aggregate with UniqueId = " + _uuid + " -----");
          
@@ -247,6 +233,53 @@ class QuerySupportedCapabilities extends NullFederateAmbassador implements Runna
          if (_requestTaskId.equals(taskId)) {
             System.out.println("Successful test of NETN-ETR QueryCapabilties!");
          }
+         System.out.print("Sending MagicMove interaction");
+         sendMagicMove();
+         System.out.println(" -> Ok");
+      }
+   }
+
+   public void sendMagicMove(){
+
+      try {
+         ParameterHandleValueMap parameters = _rtiAmbassador.getParameterHandleValueMapFactory().create(4);
+      
+         HLAfixedRecord location = _encoderFactory.createHLAfixedRecord();
+         location.add(_encoderFactory.createHLAfloat32BE(7));
+         location.add(_encoderFactory.createHLAfloat32BE(8));
+         location.add(_encoderFactory.createHLAfloat32BE(9));
+
+         HLAfloat32BE heading = _encoderFactory.createHLAfloat32BE(30);
+         
+         UUID uuid = UUID.fromString(_uuid);
+         UUID taskId = UUID.fromString(_requestTaskId);
+         byte[] byteArrayUUID = convertUUIDToBytes(uuid);
+         byte[] byteArrayTaskID = convertUUIDToBytes(taskId);
+         
+         HLAfixedArray<HLAbyte> arrayForUUID = _encoderFactory.createHLAfixedArray(_byteEncoderFactory, 16);
+         HLAfixedArray<HLAbyte> arrayForTaskId = _encoderFactory.createHLAfixedArray(_byteEncoderFactory, 16);
+
+         for(int i = 0; i < 16; i++){
+            arrayForUUID.get(i).setValue(byteArrayUUID[i]);
+            arrayForTaskId.get(i).setValue(byteArrayTaskID[i]);
+         }
+
+         parameters.put(_Location, location.toByteArray());
+         parameters.put(_Heading, heading.toByteArray());
+         parameters.put(_TaskId, arrayForTaskId.toByteArray());
+         parameters.put(_Taskee, arrayForUUID.toByteArray());
+         
+         try {
+            _rtiAmbassador.sendInteraction(_MagicMove, parameters, null);
+         } catch (InteractionClassNotPublished | InteractionParameterNotDefined | InteractionClassNotDefined
+               | SaveInProgress | RestoreInProgress | RTIinternalError e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+         }
+
+      } catch (FederateNotExecutionMember | NotConnected e) {
+         // TODO Auto-generated catch block
+         e.printStackTrace();
       }
    }
 
@@ -303,7 +336,7 @@ class QuerySupportedCapabilities extends NullFederateAmbassador implements Runna
          
 
          try {
-            System.out.print("Verifying UUID is same");
+            System.out.print("\nReceived Reflection, Verifying UUID is same");
             
             arrayDecoder.decode(theAttributes.get(_UniqueId));
             UUID uuid = convertBytesToUUID(arrayDecoder.toByteArray());
@@ -347,6 +380,7 @@ class QuerySupportedCapabilities extends NullFederateAmbassador implements Runna
       HLAfixedRecord orientation = _encoderFactory.createHLAfixedRecord(); //Psi, Theta, Phi
       HLAfixedRecord velocity = _encoderFactory.createHLAfixedRecord(); //XYZ velocity
       HLAfixedRecord angularVelocity = _encoderFactory.createHLAfixedRecord();
+      HLAfixedRecord accelerationVector = _encoderFactory.createHLAfixedRecord();
       hla.rti1516e.encoding.HLAboolean isFrozen = _encoderFactory.createHLAboolean();
 
       HLAfixedRecord staticSpatial = _encoderFactory.createHLAfixedRecord(); //Container location, isFrozen and orientation
@@ -376,6 +410,10 @@ class QuerySupportedCapabilities extends NullFederateAmbassador implements Runna
       angularVelocity.add(_encoderFactory.createHLAfloat32BE());
       angularVelocity.add(_encoderFactory.createHLAfloat32BE());
 
+      accelerationVector.add(_encoderFactory.createHLAfloat32BE());
+      accelerationVector.add(_encoderFactory.createHLAfloat32BE());
+      accelerationVector.add(_encoderFactory.createHLAfloat32BE());
+
       staticSpatial.add(location);
       staticSpatial.add(isFrozen);
       staticSpatial.add(orientation);
@@ -391,10 +429,52 @@ class QuerySupportedCapabilities extends NullFederateAmbassador implements Runna
       RPWSpatial.add(velocity);
       RPWSpatial.add(angularVelocity);
 
+      RVWSpatial.add(location);
+      RVWSpatial.add(isFrozen);
+      RVWSpatial.add(orientation);
+      RVWSpatial.add(velocity);
+      RVWSpatial.add(angularVelocity);
+      RVWSpatial.add(accelerationVector);
+
+      FVWSpatial.add(location);
+      FVWSpatial.add(isFrozen);
+      FVWSpatial.add(orientation);
+      FVWSpatial.add(velocity);
+      FVWSpatial.add(accelerationVector);
+
+      FPBSpatial.add(location);
+      FPBSpatial.add(isFrozen);
+      FPBSpatial.add(orientation);
+      FPBSpatial.add(velocity);
+
+      RPBSpatial.add(location);
+      RPBSpatial.add(isFrozen);
+      RPBSpatial.add(orientation);
+      RPBSpatial.add(velocity);
+      RPBSpatial.add(angularVelocity);
+
+      RVBSpatial.add(location);
+      RVBSpatial.add(isFrozen);
+      RVBSpatial.add(orientation);
+      RVBSpatial.add(velocity);
+      RVBSpatial.add(accelerationVector);
+      RVBSpatial.add(angularVelocity);
+
+      FVBSpatial.add(location);
+      FVBSpatial.add(isFrozen);
+      FVBSpatial.add(orientation);
+      FVBSpatial.add(velocity);
+      FVBSpatial.add(accelerationVector);
 
       decoder.setVariant(_encoderFactory.createHLAoctet((byte)1), staticSpatial);
       decoder.setVariant(_encoderFactory.createHLAoctet((byte)2), FPWSpatial);
       decoder.setVariant(_encoderFactory.createHLAoctet((byte)3), RPWSpatial);
+      decoder.setVariant(_encoderFactory.createHLAoctet((byte)4), RVWSpatial);
+      decoder.setVariant(_encoderFactory.createHLAoctet((byte)5), FVWSpatial);
+      decoder.setVariant(_encoderFactory.createHLAoctet((byte)6), FPBSpatial);
+      decoder.setVariant(_encoderFactory.createHLAoctet((byte)7), RPBSpatial);
+      decoder.setVariant(_encoderFactory.createHLAoctet((byte)8), RVBSpatial);
+      decoder.setVariant(_encoderFactory.createHLAoctet((byte)9), FVBSpatial);
 
       return decoder;
    }
@@ -406,5 +486,12 @@ class QuerySupportedCapabilities extends NullFederateAmbassador implements Runna
          long low = byteBuffer.getLong();
          return new UUID(high, low);
      }
+
+     public static byte[] convertUUIDToBytes(UUID uuid) {
+      ByteBuffer bb = ByteBuffer.wrap(new byte[16]);
+      bb.putLong(uuid.getMostSignificantBits());
+      bb.putLong(uuid.getLeastSignificantBits());
+      return bb.array();
+  }
 
 }
