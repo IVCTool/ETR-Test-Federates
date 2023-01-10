@@ -39,7 +39,7 @@ class CapabilitiesSupported extends NullFederateAmbassador implements Runnable
    ParameterHandle _Location; // Required magic move
    ParameterHandle _Heading; //Required magic move
 
-   Vector<Float> locationCoords = new Vector<Float>(); //X Y Z
+   Vector<Double> locationCoords = new Vector<Double>(); //X Y Z
    ObjectInstanceHandle _theObject;
 
    EncoderFactory _encoderFactory;
@@ -176,9 +176,9 @@ class CapabilitiesSupported extends NullFederateAmbassador implements Runnable
 
          System.out.println("\n----- Update NETN_Aggregate attributes -----");
 
-         locationCoords.add((float)1.0);
-         locationCoords.add((float)2.0);
-         locationCoords.add((float)3.0);
+         locationCoords.add((Double)1.0);
+         locationCoords.add((Double)2.0);
+         locationCoords.add((Double)3.0);
          
          HLAoctet spatialDiscriminant = _encoderFactory.createHLAoctet((byte)1); // create discriminant
          HLAvariantRecord<HLAoctet> spatial = _encoderFactory.createHLAvariantRecord(spatialDiscriminant);
@@ -267,9 +267,9 @@ class CapabilitiesSupported extends NullFederateAmbassador implements Runnable
          HLAfixedArray<HLAbyte> taskId = _encoderFactory.createHLAfixedArray(_byteEncoderFactory, 16);
          
          HLAfixedRecord location = _encoderFactory.createHLAfixedRecord(); // X, Y, Z
-         HLAfloat32BE X = _encoderFactory.createHLAfloat32BE();
-         HLAfloat32BE Y = _encoderFactory.createHLAfloat32BE();
-         HLAfloat32BE Z = _encoderFactory.createHLAfloat32BE();
+         HLAfloat64BE X = _encoderFactory.createHLAfloat64BE();
+         HLAfloat64BE Y = _encoderFactory.createHLAfloat64BE();
+         HLAfloat64BE Z = _encoderFactory.createHLAfloat64BE();
          
          location.add(X);
          location.add(Y);

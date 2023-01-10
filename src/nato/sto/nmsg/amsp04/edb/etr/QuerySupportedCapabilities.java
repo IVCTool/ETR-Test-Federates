@@ -181,6 +181,10 @@ class QuerySupportedCapabilities extends NullFederateAmbassador implements Runna
          _rtiAmbassador.sendInteraction(_QuerySupportedCapabilities, parameters, null);
          System.out.println("\nSendInteraction  -> OK");
 
+         //System.out.print("Sending MagicMove interaction");
+         //sendMagicMove(); //If federate does not support query this works also.
+         //System.out.println(" -> Ok");
+
          System.out.println("\n----- Wait " + _timeout/1000 +"s for CapabilitiesSupported interaction -----");
          // Wait for Capabilities Supported or timeout
 
@@ -245,9 +249,10 @@ class QuerySupportedCapabilities extends NullFederateAmbassador implements Runna
          ParameterHandleValueMap parameters = _rtiAmbassador.getParameterHandleValueMapFactory().create(4);
       
          HLAfixedRecord location = _encoderFactory.createHLAfixedRecord();
-         location.add(_encoderFactory.createHLAfloat32BE(7));
-         location.add(_encoderFactory.createHLAfloat32BE(8));
-         location.add(_encoderFactory.createHLAfloat32BE(9));
+         location.add(_encoderFactory.createHLAfloat64BE(2981));
+         location.add(_encoderFactory.createHLAfloat64BE(8000));
+         location.add(_encoderFactory.createHLAfloat64BE(900));
+         
 
          HLAfloat32BE heading = _encoderFactory.createHLAfloat32BE(30);
          
