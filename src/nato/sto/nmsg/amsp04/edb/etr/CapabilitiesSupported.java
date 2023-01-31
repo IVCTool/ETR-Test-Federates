@@ -358,9 +358,9 @@ class CapabilitiesSupported extends NullFederateAmbassador implements Runnable
          HLAvariantRecord<HLAoctet> spatial = _encoderFactory.createHLAvariantRecord(spatialDiscriminant);
          HLAfixedRecord staticSpatial = _encoderFactory.createHLAfixedRecord();
          HLAfixedRecord location = _encoderFactory.createHLAfixedRecord(); // X, Y, Z
-         location.add(_encoderFactory.createHLAfloat64BE(locationCoords.get(0))); //1
-         location.add(_encoderFactory.createHLAfloat64BE(locationCoords.get(1))); //2
-         location.add(_encoderFactory.createHLAfloat64BE(locationCoords.get(2))); //3
+         location.add(_encoderFactory.createHLAfloat64BE(locationCoords.get(0))); //X
+         location.add(_encoderFactory.createHLAfloat64BE(locationCoords.get(1))); //Y
+         location.add(_encoderFactory.createHLAfloat64BE(locationCoords.get(2))); //Z
          HLAboolean isFrozen = _encoderFactory.createHLAboolean(false);
          HLAfixedRecord orientation = _encoderFactory.createHLAfixedRecord(); // Psi, Theta, Phi
          orientation.add(_encoderFactory.createHLAfloat32BE(4));

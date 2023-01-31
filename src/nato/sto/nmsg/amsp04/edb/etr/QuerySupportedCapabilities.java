@@ -10,11 +10,6 @@ import java.util.Iterator;
 
 import nato.sto.nmsg.amsp04.edb.etr.spatialDecoder;
 
-import java.io.File;
-import java.net.URL;
-import java.util.Base64;
-import java.util.Iterator;
-
 import java.nio.ByteBuffer;
 import java.util.*;
 
@@ -359,10 +354,10 @@ class QuerySupportedCapabilities extends NullFederateAmbassador implements Runna
                octetDecoder.decode(theAttributes.get(_Status));
                System.out.println("Status: " + octetDecoder.getValue());
    
-               HLAvariantRecord decoder = spatialDecoder.buildSpatialDecoder();
+               HLAvariantRecord decoder = spatialDecoder.buildSpatialDecoder(_encoderFactory);
                decoder.decode(theAttributes.get(_Spatial));
    
-               decoder.setDiscriminant(decoder.getDiscriminant());
+               //decoder.setDiscriminant(decoder.getDiscriminant());
                HLAfixedRecord values = (HLAfixedRecord)decoder.getValue();
    
                System.out.println("Spatial discriminant: " + decoder.getDiscriminant());
